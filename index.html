@@ -99,6 +99,7 @@
       <div class="seccion">Opciones</div>
       <div class="toggles">
         <div class="toggle" id="tInclinar">Inclinar 📱</div>
+        <div class="toggle" id="tInvertir">↔ Invertir</div>
         <div class="toggle" id="tLinea">Trazada guía</div>
         <div class="toggle" id="tRitmo">Metrónomo</div>
         <div class="toggle" id="tSonido">Sonido</div>
@@ -109,7 +110,7 @@
         <img src="assets/ceva.png" alt="CEVA" style="height:20px" onerror="this.style.display='none'">
       </div>
       <div style="margin-top:8px;font-size:9.5px;color:#9fb0c6;line-height:1.45;">Proyecto familiar sin ánimo de lucro. Marcas de Baqueira Beret y CEVA, propiedad de sus titulares. Código bajo CC BY‑NC 4.0.</div>
-      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v9</b> · diagnóstico inclinación</div>
+      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v10</b></div>
     </div>
   </div>
 
@@ -159,7 +160,7 @@ const LS={ get(k,d){ try{const v=localStorage.getItem('bqski3_'+k);return v===nu
 const COLORES=['#ff6a13','#1463d6','#d62828','#15a05a','#ffd23f','#ff5fa2','#7a4fff','#f2f2f2'];
 const cfg={ nombre:LS.get('nombre','Simón Kaibide'), dorsal:LS.get('dorsal',123), club:LS.get('club','CEVA'),
   pais:LS.get('pais','España'), color:LS.get('color',COLORES[0]), diff:LS.get('diff',0),
-  linea:LS.get('linea',true), ritmo:LS.get('ritmo',true), sonido:LS.get('sonido',true), tilt:LS.get('tilt',true) };
+  linea:LS.get('linea',true), ritmo:LS.get('ritmo',true), sonido:LS.get('sonido',true), tilt:LS.get('tilt',true), tiltInv:LS.get('tiltInv',false) };
 
 // ---- Motor pseudo-3D ----
 const SEGLEN=200;            // longitud de un segmento (unidades de mundo)
@@ -192,7 +193,7 @@ function steerDir(){ return ((input.right||input.pRight)?1:0)-((input.left||inpu
 // ---- Inclinación del dispositivo (OPTIMIZADO PARA JUGAR EN APAISADO) ----
 // En apaisado el giro va sobre 'beta' (no gamma) y con signo según la orientación de pantalla;
 // y se calibra un "neutro" porque un niño sostiene el iPad inclinado hacia atrás, no plano.
-let tiltActive=false, tiltSteer=0, tiltListener=false, tiltSeen=false, tiltDbg='';
+let tiltActive=false, tiltSteer=0, tiltListener=false, tiltSeen=false;
 function addTilt(){ if(!tiltListener){ window.addEventListener('deviceorientation',onTilt); tiltListener=true; } tiltActive=true; }
 function enableTilt(){ if(!cfg.tilt) return; const DOE=window.DeviceOrientationEvent;
   if(DOE && typeof DOE.requestPermission==='function'){ DOE.requestPermission().then(st=>{ if(st==='granted') addTilt(); }).catch(()=>{}); }   // iOS 13+: gesto + HTTPS
@@ -206,14 +207,13 @@ function screenAngle(){ try{
 function onTilt(e){ if(!cfg.tilt){ tiltSteer=0; return; }
   tiltSeen=true;
   const landscape = W>=H;
-  let v; if(landscape){ v=(screenAngle()===90)?-e.beta:e.beta; } else { v=e.gamma; }
-  if(v!=null && !isNaN(v)){
-    if(v>180) v-=360; else if(v<-180) v+=360;
-    const DEAD=2, MAX=25;                                       // 0°=recto, ±25°=tope (±2° de margen)
-    const mag = Math.abs(v)<=DEAD ? 0 : (Math.abs(v)-DEAD)/(MAX-DEAD);
-    tiltSteer += (clamp((v<0?-1:1)*mag,-1,1) - tiltSteer)*0.3;
-  }
-  tiltDbg=(landscape?'APAISADO·beta':'VERTICAL·gamma')+'  b'+(e.beta==null?'–':e.beta.toFixed(0))+'  g'+(e.gamma==null?'–':e.gamma.toFixed(0))+'  giro '+tiltSteer.toFixed(2); }
+  let v; if(landscape){ v=(screenAngle()===90)?-e.beta:e.beta; } else { v=e.gamma; }   // apaisado→beta, vertical→gamma
+  if(v==null || isNaN(v)) return;
+  if(cfg.tiltInv) v=-v;                                          // ↔ invertir sentido si hace falta
+  if(v>180) v-=360; else if(v<-180) v+=360;
+  const DEAD=2, MAX=25;                                          // 0°=recto, ±25°=tope (±2° de margen)
+  const mag = Math.abs(v)<=DEAD ? 0 : (Math.abs(v)-DEAD)/(MAX-DEAD);
+  tiltSteer += (clamp((v<0?-1:1)*mag,-1,1) - tiltSteer)*0.3; }
 
 // ===================================================================
 //  AUDIO
@@ -382,10 +382,10 @@ function render(){
   drawVignette();
   if(state===STATE.RACE) drawHUD();
   if(state===STATE.COUNT) drawCountdown();
-  if((state===STATE.RACE||state===STATE.COUNT) && cfg.tilt) drawTiltDebug();
+  if((state===STATE.RACE||state===STATE.COUNT) && cfg.tilt && !tiltSeen) drawTiltStatus();
 }
-function drawTiltDebug(){ const txt = tiltSeen? tiltDbg : '📱 sensor inactivo · ¿pulsaste «Permitir» el movimiento?';
-  ctx.save(); const fs=Math.max(11,Math.min(W,H)*0.020); ctx.font='bold '+fs+'px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+function drawTiltStatus(){ const txt='📱 inclinación: pulsa «Permitir» el movimiento';
+  ctx.save(); const fs=Math.max(11,Math.min(W,H)*0.020); ctx.font='bold '+fs+'px Trebuchet MS'; ctx.textAlign='center'; ctx.textBaseline='middle';
   const w=ctx.measureText(txt).width+18, y=H*0.5;
   ctx.fillStyle='rgba(8,20,40,.55)'; rrectAbs(W/2-w/2,y-fs,w,fs*2,7); ctx.fill();
   ctx.fillStyle='#ffe27a'; ctx.fillText(txt,W/2,y); ctx.restore(); }
@@ -601,7 +601,7 @@ function refreshNiveles(){document.querySelectorAll('#niveles .chip').forEach(c=
 document.querySelectorAll('#niveles .chip').forEach(c=>{c.onclick=()=>{cfg.diff=+c.dataset.diff;LS.set('diff',cfg.diff);refreshNiveles();};});refreshNiveles();
 function bindToggle(id,key){const el=document.getElementById(id);const upd=()=>el.classList.toggle('on',cfg[key]);upd();
   el.onclick=()=>{cfg[key]=!cfg[key];LS.set(key,cfg[key]);upd();if(key==='sonido'){Audio.setEnabled(cfg.sonido);updSndBtn();} if(key==='tilt'&&cfg.tilt){enableTilt();}};}
-bindToggle('tInclinar','tilt');bindToggle('tLinea','linea');bindToggle('tRitmo','ritmo');bindToggle('tSonido','sonido');
+bindToggle('tInclinar','tilt');bindToggle('tInvertir','tiltInv');bindToggle('tLinea','linea');bindToggle('tRitmo','ritmo');bindToggle('tSonido','sonido');
 const inNombre=document.getElementById('nombre'),inDorsal=document.getElementById('dorsal'),inClub=document.getElementById('club'),inPais=document.getElementById('pais');
 inNombre.value=cfg.nombre;inDorsal.value=cfg.dorsal;inClub.value=cfg.club;inPais.value=cfg.pais;
 inNombre.oninput=()=>{cfg.nombre=inNombre.value.trim()||'Corredor';LS.set('nombre',cfg.nombre);};
