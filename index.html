@@ -104,19 +104,12 @@
         <div class="toggle" id="tSonido">Sonido</div>
       </div>
       <button class="btn" id="play">▶ ¡A la salida!</button>
-      <div class="ayuda"><b>iPhone/iPad:</b> inclina para girar 🛞 — el "recto" se ajusta a tu postura con el botón 🎯. &nbsp;<b>Ordenador:</b> flechas ⬅️ ➡️. &nbsp;<b>Táctil:</b> toca los lados.</div>
-      <button class="toggle" id="calibBtn" style="margin-top:10px">🎯 Centrar inclinación (calibrar)</button>
-      <div id="tiltinfo" class="hidden" style="margin-top:8px;font-size:12px;color:#27456f;background:#eef4fb;border:2px solid #cfe0f4;border-radius:10px;padding:9px;text-align:left;line-height:1.55;">
-        Sostén el iPad <b>en apaisado, como vas a jugar</b>, y mira los números:
-        <div id="tiltvals" style="font-family:ui-monospace,monospace;margin:5px 0;color:#0b1c34">esperando al sensor… (acepta «Permitir»)</div>
-        <button class="toggle" id="fijarBtn">📍 Fijar este centro</button>
-        <div id="tiltfixed" style="margin-top:5px;color:#0a8f5e;font-weight:bold"></div>
-      </div>
+      <div class="ayuda"><b>iPhone/iPad:</b> inclina para girar 🛞 (recto = sostenerlo nivelado a 0°). &nbsp;<b>Ordenador:</b> flechas ⬅️ ➡️. &nbsp;<b>Táctil:</b> toca los lados.</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;">
         <img src="assets/ceva.png" alt="CEVA" style="height:20px" onerror="this.style.display='none'">
       </div>
       <div style="margin-top:8px;font-size:9.5px;color:#9fb0c6;line-height:1.45;">Proyecto familiar sin ánimo de lucro. Marcas de Baqueira Beret y CEVA, propiedad de sus titulares. Código bajo CC BY‑NC 4.0.</div>
-      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v7</b></div>
+      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v8</b></div>
     </div>
   </div>
 
@@ -199,8 +192,7 @@ function steerDir(){ return ((input.right||input.pRight)?1:0)-((input.left||inpu
 // ---- Inclinación del dispositivo (OPTIMIZADO PARA JUGAR EN APAISADO) ----
 // En apaisado el giro va sobre 'beta' (no gamma) y con signo según la orientación de pantalla;
 // y se calibra un "neutro" porque un niño sostiene el iPad inclinado hacia atrás, no plano.
-let tiltActive=false, tiltSteer=0, tiltListener=false, tiltLastV=0, tiltInfoOn=false;
-let tiltNeutral=LS.get('tiltZero',0);                          // "recto" = postura calibrada con el botón 🎯 (persistente)
+let tiltActive=false, tiltSteer=0, tiltListener=false;
 function addTilt(){ if(!tiltListener){ window.addEventListener('deviceorientation',onTilt); tiltListener=true; } tiltActive=true; }
 function enableTilt(){ if(!cfg.tilt) return; const DOE=window.DeviceOrientationEvent;
   if(DOE && typeof DOE.requestPermission==='function'){ DOE.requestPermission().then(st=>{ if(st==='granted') addTilt(); }).catch(()=>{}); }   // iOS 13+: gesto + HTTPS
@@ -209,17 +201,15 @@ function screenAngle(){ try{
     if(screen.orientation && typeof screen.orientation.angle==='number') return screen.orientation.angle;   // estándar (iOS 16.4+)
     const w=window.orientation; if(w===90) return 270; if(w===-90) return 90; return (((w||0)%360)+360)%360; // window.orientation usa el signo opuesto
   }catch(_){ return 0; } }
-function tiltRecenter(){ tiltNeutral=tiltLastV; LS.set('tiltZero',tiltNeutral); }   // 🎯 Centrar: fija la postura actual como "recto" y la guarda
+// Centro fijo 0°. APAISADO → beta · VERTICAL → gamma · tope a ±25°. Detecta la orientación y ya.
 function onTilt(e){ if(!cfg.tilt){ tiltSteer=0; return; }
   const a=screenAngle();
-  let v; if(a===90) v=-e.beta; else if(a===270) v=e.beta; else if(a===180) v=-e.gamma; else v=e.gamma;  // apaisado→beta, vertical→gamma; positivo = derecha
+  let v; if(a===90) v=-e.beta; else if(a===270) v=e.beta; else if(a===180) v=-e.gamma; else v=e.gamma;  // 0/180 vertical→gamma · 90/270 apaisado→beta
   if(v==null || isNaN(v)) return;
-  tiltLastV=v;
-  if(tiltInfoOn){ const el=document.getElementById('tiltvals'); if(el) el.textContent='pantalla '+a+'°  ·  beta '+(e.beta==null?'–':e.beta.toFixed(1))+'  ·  gamma '+(e.gamma==null?'–':e.gamma.toFixed(1))+'  ·  eje '+v.toFixed(1)+'  ·  centro '+tiltNeutral.toFixed(1); }
-  let d=v-tiltNeutral; if(d>180) d-=360; else if(d<-180) d+=360;
-  const DEAD=4, MAX=22;
-  const mag = Math.abs(d)<=DEAD ? 0 : (Math.abs(d)-DEAD)/(MAX-DEAD);
-  tiltSteer += (clamp((d<0?-1:1)*mag,-1,1) - tiltSteer)*0.3; } // suavizado para manos de niño
+  if(v>180) v-=360; else if(v<-180) v+=360;
+  const DEAD=2, MAX=25;                                         // 0°=recto, ±25°=giro a tope (±2° de margen para evitar temblor)
+  const mag = Math.abs(v)<=DEAD ? 0 : (Math.abs(v)-DEAD)/(MAX-DEAD);
+  tiltSteer += (clamp((v<0?-1:1)*mag,-1,1) - tiltSteer)*0.3; }  // suavizado
 
 // ===================================================================
 //  AUDIO
@@ -602,9 +592,6 @@ document.querySelectorAll('#niveles .chip').forEach(c=>{c.onclick=()=>{cfg.diff=
 function bindToggle(id,key){const el=document.getElementById(id);const upd=()=>el.classList.toggle('on',cfg[key]);upd();
   el.onclick=()=>{cfg[key]=!cfg[key];LS.set(key,cfg[key]);upd();if(key==='sonido'){Audio.setEnabled(cfg.sonido);updSndBtn();} if(key==='tilt'&&cfg.tilt){enableTilt();}};}
 bindToggle('tInclinar','tilt');bindToggle('tLinea','linea');bindToggle('tRitmo','ritmo');bindToggle('tSonido','sonido');
-document.getElementById('calibBtn').onclick=()=>{ Audio.init(); enableTilt(); tiltInfoOn=true; show(document.getElementById('tiltinfo')); };
-document.getElementById('fijarBtn').onclick=()=>{ tiltRecenter(); const o=screenAngle(); const ej=(o===90||o===270)?'beta · apaisado':'gamma · vertical';
-  document.getElementById('tiltfixed').textContent='✅ Centro = '+tiltNeutral.toFixed(1)+'°  ('+ej+', pantalla '+o+'). ¡Pásame este número!'; };
 const inNombre=document.getElementById('nombre'),inDorsal=document.getElementById('dorsal'),inClub=document.getElementById('club'),inPais=document.getElementById('pais');
 inNombre.value=cfg.nombre;inDorsal.value=cfg.dorsal;inClub.value=cfg.club;inPais.value=cfg.pais;
 inNombre.oninput=()=>{cfg.nombre=inNombre.value.trim()||'Corredor';LS.set('nombre',cfg.nombre);};
