@@ -109,7 +109,7 @@
         <img src="assets/ceva.png" alt="CEVA" style="height:20px" onerror="this.style.display='none'">
       </div>
       <div style="margin-top:8px;font-size:9.5px;color:#9fb0c6;line-height:1.45;">Proyecto familiar sin ánimo de lucro. Marcas de Baqueira Beret y CEVA, propiedad de sus titulares. Código bajo CC BY‑NC 4.0.</div>
-      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v8</b></div>
+      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v9</b> · diagnóstico inclinación</div>
     </div>
   </div>
 
@@ -192,7 +192,7 @@ function steerDir(){ return ((input.right||input.pRight)?1:0)-((input.left||inpu
 // ---- Inclinación del dispositivo (OPTIMIZADO PARA JUGAR EN APAISADO) ----
 // En apaisado el giro va sobre 'beta' (no gamma) y con signo según la orientación de pantalla;
 // y se calibra un "neutro" porque un niño sostiene el iPad inclinado hacia atrás, no plano.
-let tiltActive=false, tiltSteer=0, tiltListener=false;
+let tiltActive=false, tiltSteer=0, tiltListener=false, tiltSeen=false, tiltDbg='';
 function addTilt(){ if(!tiltListener){ window.addEventListener('deviceorientation',onTilt); tiltListener=true; } tiltActive=true; }
 function enableTilt(){ if(!cfg.tilt) return; const DOE=window.DeviceOrientationEvent;
   if(DOE && typeof DOE.requestPermission==='function'){ DOE.requestPermission().then(st=>{ if(st==='granted') addTilt(); }).catch(()=>{}); }   // iOS 13+: gesto + HTTPS
@@ -201,15 +201,19 @@ function screenAngle(){ try{
     if(screen.orientation && typeof screen.orientation.angle==='number') return screen.orientation.angle;   // estándar (iOS 16.4+)
     const w=window.orientation; if(w===90) return 270; if(w===-90) return 90; return (((w||0)%360)+360)%360; // window.orientation usa el signo opuesto
   }catch(_){ return 0; } }
-// Centro fijo 0°. APAISADO → beta · VERTICAL → gamma · tope a ±25°. Detecta la orientación y ya.
+// APAISADO (ancho ≥ alto) → beta · VERTICAL → gamma · centro 0° · tope ±25°.
+// Orientación detectada por DIMENSIONES del viewport (robusto; la API de orientación falla en iOS).
 function onTilt(e){ if(!cfg.tilt){ tiltSteer=0; return; }
-  const a=screenAngle();
-  let v; if(a===90) v=-e.beta; else if(a===270) v=e.beta; else if(a===180) v=-e.gamma; else v=e.gamma;  // 0/180 vertical→gamma · 90/270 apaisado→beta
-  if(v==null || isNaN(v)) return;
-  if(v>180) v-=360; else if(v<-180) v+=360;
-  const DEAD=2, MAX=25;                                         // 0°=recto, ±25°=giro a tope (±2° de margen para evitar temblor)
-  const mag = Math.abs(v)<=DEAD ? 0 : (Math.abs(v)-DEAD)/(MAX-DEAD);
-  tiltSteer += (clamp((v<0?-1:1)*mag,-1,1) - tiltSteer)*0.3; }  // suavizado
+  tiltSeen=true;
+  const landscape = W>=H;
+  let v; if(landscape){ v=(screenAngle()===90)?-e.beta:e.beta; } else { v=e.gamma; }
+  if(v!=null && !isNaN(v)){
+    if(v>180) v-=360; else if(v<-180) v+=360;
+    const DEAD=2, MAX=25;                                       // 0°=recto, ±25°=tope (±2° de margen)
+    const mag = Math.abs(v)<=DEAD ? 0 : (Math.abs(v)-DEAD)/(MAX-DEAD);
+    tiltSteer += (clamp((v<0?-1:1)*mag,-1,1) - tiltSteer)*0.3;
+  }
+  tiltDbg=(landscape?'APAISADO·beta':'VERTICAL·gamma')+'  b'+(e.beta==null?'–':e.beta.toFixed(0))+'  g'+(e.gamma==null?'–':e.gamma.toFixed(0))+'  giro '+tiltSteer.toFixed(2); }
 
 // ===================================================================
 //  AUDIO
@@ -378,7 +382,13 @@ function render(){
   drawVignette();
   if(state===STATE.RACE) drawHUD();
   if(state===STATE.COUNT) drawCountdown();
+  if((state===STATE.RACE||state===STATE.COUNT) && cfg.tilt) drawTiltDebug();
 }
+function drawTiltDebug(){ const txt = tiltSeen? tiltDbg : '📱 sensor inactivo · ¿pulsaste «Permitir» el movimiento?';
+  ctx.save(); const fs=Math.max(11,Math.min(W,H)*0.020); ctx.font='bold '+fs+'px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const w=ctx.measureText(txt).width+18, y=H*0.5;
+  ctx.fillStyle='rgba(8,20,40,.55)'; rrectAbs(W/2-w/2,y-fs,w,fs*2,7); ctx.fill();
+  ctx.fillStyle='#ffe27a'; ctx.fillText(txt,W/2,y); ctx.restore(); }
 
 function drawSky(){
   const g=ctx.createLinearGradient(0,0,0,HZ+40); g.addColorStop(0,'#1f6cc0');g.addColorStop(0.6,'#6fa8d8');g.addColorStop(1,'#d7e8f6');
