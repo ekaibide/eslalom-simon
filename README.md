@@ -25,6 +25,18 @@ Editar `index.html` y volver a publicar:
 npx wrangler pages deploy . --project-name=eslalom-simon --branch=main --commit-dirty=true
 ```
 
----
+## Logos
 
-Proyecto personal/familiar. Hecho con cariño (y con Claude Code).
+Los logotipos van en `assets/` (`baqueira.png`, `ceva.png`). No se incluyen en el
+repositorio; si faltan, el juego muestra texto en su lugar.
+
+## Créditos y licencia
+
+Proyecto **familiar, sin ánimo de lucro**.
+
+- **Código**: Creative Commons **CC BY-NC 4.0** (uso/adaptación no comercial citando autoría). Ver [`LICENSE`](LICENSE).
+- **Marcas**: *Baqueira Beret* (Baqueira/Beret, S.A.) y *CEVA* (Club d'Esquí Vall d'Aran) son
+  propiedad de sus titulares; se usan solo con fin identificativo en un proyecto privado y
+  **no están** bajo la licencia CC. Se retirarán a petición de sus propietarios.
+
+Hecho con cariño (y con Claude Code).

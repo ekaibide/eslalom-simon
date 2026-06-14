@@ -73,7 +73,10 @@
 
   <div id="menu" class="overlay">
     <div class="panel">
-      <div class="brand"><span class="mark">baqueira<small>BERET</small></span></div>
+      <div class="brand">
+        <img class="logoBaq" src="assets/baqueira.png" alt="Baqueira Beret" style="height:64px;display:none" onload="this.style.display='block';var t=this.nextElementSibling;if(t)t.style.display='none';">
+        <span class="mark">baqueira<small>BERET</small></span>
+      </div>
       <div class="stadium">Stadium Fernández Ochoa · Beret · 1.860 m</div>
       <h1>Eslàlom Gegant</h1>
       <div class="sub">30 puertas · una cada ~2 s · ¡traza las curvas y marca tu mejor tiempo!</div>
@@ -109,7 +112,11 @@
         <button class="toggle" id="fijarBtn">📍 Fijar este centro</button>
         <div id="tiltfixed" style="margin-top:5px;color:#0a8f5e;font-weight:bold"></div>
       </div>
-      <div style="margin-top:8px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v6</b> · centro calibrable 🎯</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;">
+        <img src="assets/ceva.png" alt="CEVA" style="height:20px" onerror="this.style.display='none'">
+      </div>
+      <div style="margin-top:8px;font-size:9.5px;color:#9fb0c6;line-height:1.45;">Proyecto familiar sin ánimo de lucro. Marcas de Baqueira Beret y CEVA, propiedad de sus titulares. Código bajo CC BY‑NC 4.0.</div>
+      <div style="margin-top:4px;font-size:10px;letter-spacing:1px;color:#9fb0c6;">versión <b style="color:#5a7290">v7</b></div>
     </div>
   </div>
 
@@ -123,7 +130,10 @@
 
   <div id="fin" class="overlay hidden">
     <div class="panel">
-      <div class="brand"><span class="mark">baqueira<small>BERET</small></span></div>
+      <div class="brand">
+        <img class="logoBaq" src="assets/baqueira.png" alt="Baqueira Beret" style="height:50px;display:none" onload="this.style.display='block';var t=this.nextElementSibling;if(t)t.style.display='none';">
+        <span class="mark">baqueira<small>BERET</small></span>
+      </div>
       <div class="stadium">Meta · Stadium Fernández Ochoa</div>
       <div class="medalla" id="medalla">🥇</div>
       <h1 id="finTitulo">¡Carrera completada!</h1>

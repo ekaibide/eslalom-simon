@@ -1,1 +1,7 @@
 .DS_Store
+# Logos de marca: no se versionan en el repo público (se sirven solo en Pages, uso privado)
+assets/*.png
+assets/*.svg
+assets/*.jpg
+assets/*.jpeg
+assets/*.webp
