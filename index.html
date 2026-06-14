@@ -181,23 +181,23 @@ function steerDir(){ return ((input.right||input.pRight)?1:0)-((input.left||inpu
 // ---- Inclinación del dispositivo (OPTIMIZADO PARA JUGAR EN APAISADO) ----
 // En apaisado el giro va sobre 'beta' (no gamma) y con signo según la orientación de pantalla;
 // y se calibra un "neutro" porque un niño sostiene el iPad inclinado hacia atrás, no plano.
-let tiltActive=false, tiltSteer=0, tiltListener=false, tiltNeutral=null, tiltAngle=null;
+let tiltActive=false, tiltSteer=0, tiltListener=false;
 function addTilt(){ if(!tiltListener){ window.addEventListener('deviceorientation',onTilt); tiltListener=true; } tiltActive=true; }
 function enableTilt(){ if(!cfg.tilt) return; const DOE=window.DeviceOrientationEvent;
   if(DOE && typeof DOE.requestPermission==='function'){ DOE.requestPermission().then(st=>{ if(st==='granted') addTilt(); }).catch(()=>{}); }   // iOS 13+: gesto + HTTPS
   else if(DOE || ('ondeviceorientation' in window)){ addTilt(); } }
-function tiltResetNeutral(){ tiltNeutral=null; tiltAngle=null; }
 function screenAngle(){ try{
     if(screen.orientation && typeof screen.orientation.angle==='number') return screen.orientation.angle;   // estándar (iOS 16.4+)
     const w=window.orientation; if(w===90) return 270; if(w===-90) return 90; return (((w||0)%360)+360)%360; // window.orientation usa el signo opuesto
   }catch(_){ return 0; } }
 function onTilt(e){ if(!cfg.tilt){ tiltSteer=0; return; }
-  const a=screenAngle(); if(a!==tiltAngle){ tiltAngle=a; tiltNeutral=null; }       // recalibra al rotar el dispositivo
+  const a=screenAngle();
   let v; if(a===90) v=-e.beta; else if(a===270) v=e.beta; else if(a===180) v=-e.gamma; else v=e.gamma;  // apaisado→beta, vertical→gamma; positivo = derecha
   if(v==null || isNaN(v)) return;
-  if(tiltNeutral===null) tiltNeutral=v;                       // 1ª lectura = postura neutra de quien juega
-  let d=v-tiltNeutral; if(d>180) d-=360; else if(d<-180) d+=360;  // desenrollar (beta cruza ±180)
-  const DEAD=4, MAX=25;                                       // grados: zona muerta y giro a tope (cómodo en apaisado)
+  // CENTRO FIJO a 0°: el dispositivo NIVELADO (sin rolar a izq/dcha) va recto. SIN auto-calibración de postura.
+  // En apaisado, apoyar el iPad hacia atrás cae sobre gamma (que ignoramos), así que beta≈0 = recto.
+  let d=v; if(d>180) d-=360; else if(d<-180) d+=360;
+  const DEAD=5, MAX=25;                                       // zona muerta ±5° (sostener ~nivelado = recto), giro a tope 25°
   const mag = Math.abs(d)<=DEAD ? 0 : (Math.abs(d)-DEAD)/(MAX-DEAD);
   const target = clamp((d<0?-1:1)*mag, -1, 1);
   tiltSteer += (target - tiltSteer)*0.3; }                    // suavizado para manos de niño
@@ -275,7 +275,7 @@ function buildCourse(){
 let last=0,paused=false,userPaused=false;
 function startCountdown(){ applyDiff(); buildCourse();
   position=0; playerX=0; playerVX=0; lean=0; speed=D.speed; raceTime=0; passedCount=0; cleanCount=0; maxKmh=0;
-  lastBeatTick=-1; isNewRecord=false; userPaused=false; bgShift=0; resetInput(); tiltResetNeutral();
+  lastBeatTick=-1; isNewRecord=false; userPaused=false; bgShift=0; resetInput();
   state=STATE.COUNT; countT=3.0; Audio.init(); Audio.count(3);
   hide(menu); hide(fin); hide(pausa);
   document.getElementById('snd').style.display='block'; document.getElementById('pause').style.display='block'; blurActive(); }
